@@ -10,9 +10,14 @@ import (
 	"time"
 
 	"contrib.go.opencensus.io/exporter/jaeger"
+	"github.com/kelseyhightower/envconfig"
 	"go.opencensus.io/plugin/ochttp"
 	"go.opencensus.io/trace"
 )
+
+type envSpecification struct {
+	JaegerHost string `default:"0.0.0.0"`
+}
 
 func main() {
 
@@ -51,8 +56,15 @@ func doWork(ctx context.Context, client *http.Client) {
 }
 
 func enableObservabilityAndExporters() {
-	agentEndpointURI := "localhost:6831"
-	collectorEndpointURI := "http://localhost:14268/api/traces"
+	var envs envSpecification
+
+	err := envconfig.Process("client", &envs)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	agentEndpointURI := fmt.Sprintf("%s:6831", envs.JaegerHost)
+	collectorEndpointURI := fmt.Sprintf("http://%s:14268/api/traces", envs.JaegerHost)
 
 	jaegerExporter, err := jaeger.NewExporter(jaeger.Options{
 		AgentEndpoint:     agentEndpointURI,
