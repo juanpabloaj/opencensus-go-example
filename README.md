@@ -1,4 +1,7 @@
 
+Usage
+
+    docker-compose up -d
 
 ### references
 
