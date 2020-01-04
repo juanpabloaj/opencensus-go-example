@@ -3,6 +3,10 @@
     docker-compose up -d
     docker-compose logs --follow
 
+Open Jaeger in your browser
+
+    http://localhost:16686/
+
 ### references
 
 * https://opencensus.io/guides/http/go/net_http/client/
