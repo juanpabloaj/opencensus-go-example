@@ -1,11 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -22,40 +22,29 @@ type envSpecification struct {
 func main() {
 	enableObservabilityAndExporters()
 
-	client := &http.Client{Transport: &ochttp.Transport{}}
-	i := uint64(0)
+	originalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Println("get request ...")
+		io.Copy(ioutil.Discard, r.Body)
 
-	for {
-		i++
-		log.Printf("Performing fetch #%d", i)
-		ctx, span := trace.StartSpan(context.Background(), fmt.Sprintf("fetch-%d", i))
-		doWork(ctx, client)
-		span.End()
+		time.Sleep(time.Duration(rand.Intn(1000)+1) * time.Millisecond)
 
-		<-time.After(5 * time.Second)
+		w.Write([]byte("Hello, World!"))
+	})
+
+	opencensusHandler := &ochttp.Handler{
+		Handler: originalHandler,
 	}
 
-}
+	mux := http.NewServeMux()
+	mux.Handle("/", opencensusHandler)
+	log.Fatal(http.ListenAndServe(":8888", mux))
 
-func doWork(ctx context.Context, client *http.Client) {
-	req, _ := http.NewRequest("GET", "http://server:8888/", nil)
-
-	req = req.WithContext(ctx)
-
-	res, err := client.Do(req)
-	if err != nil {
-		log.Printf("Failed to make the request: %v", err)
-		return
-	}
-
-	io.Copy(ioutil.Discard, res.Body)
-	_ = res.Body.Close()
 }
 
 func enableObservabilityAndExporters() {
 	var envs envSpecification
 
-	err := envconfig.Process("client", &envs)
+	err := envconfig.Process("server", &envs)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -66,7 +55,7 @@ func enableObservabilityAndExporters() {
 	jaegerExporter, err := jaeger.NewExporter(jaeger.Options{
 		AgentEndpoint:     agentEndpointURI,
 		CollectorEndpoint: collectorEndpointURI,
-		ServiceName:       "demo-client",
+		ServiceName:       "demo-server",
 	})
 
 	if err != nil {
