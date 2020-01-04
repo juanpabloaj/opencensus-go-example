@@ -1,3 +1,6 @@
+
+![opencensus](https://i.imgur.com/tZzo80e.png)
+
 ### Usage
 
     docker-compose up -d
